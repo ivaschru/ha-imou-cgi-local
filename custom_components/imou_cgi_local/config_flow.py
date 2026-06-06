@@ -157,7 +157,10 @@ class ImouCgiLocalOptionsFlow(config_entries.OptionsFlow):
     """Allow tuning event codes and watchdog timings after setup."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
+        # Newer Home Assistant versions expose ``config_entry`` as a read-only
+        # property on OptionsFlow.  Keep our explicit reference private so the
+        # flow works across old and new core releases.
+        self._config_entry = config_entry
 
     async def async_step_init(self, user_input: dict | None = None) -> FlowResult:
         """Show and save runtime options."""
@@ -173,7 +176,7 @@ class ImouCgiLocalOptionsFlow(config_entries.OptionsFlow):
                 },
             )
 
-        options = self.config_entry.options
+        options = self._config_entry.options
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(

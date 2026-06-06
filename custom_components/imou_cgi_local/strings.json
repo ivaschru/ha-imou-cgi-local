@@ -1,0 +1,39 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Local Imou CGI camera",
+        "description": "Connect to the camera's local Dahua/Imou CGI web service.",
+        "data": {
+          "name": "Name",
+          "host": "Host",
+          "port": "HTTP port",
+          "username": "Username",
+          "password": "Password",
+          "event_codes": "Event codes",
+          "motion_timeout": "Motion timeout, seconds",
+          "reconnect_delay": "Reconnect delay, seconds"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect or authenticate to the camera CGI service.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This camera is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Local Imou CGI options",
+        "data": {
+          "event_codes": "Event codes",
+          "motion_timeout": "Motion timeout, seconds",
+          "reconnect_delay": "Reconnect delay, seconds"
+        }
+      }
+    }
+  }
+}

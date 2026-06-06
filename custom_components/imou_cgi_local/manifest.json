@@ -1,0 +1,13 @@
+{
+  "domain": "imou_cgi_local",
+  "name": "Imou CGI Local",
+  "codeowners": ["@ivaschru"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/ivaschru/ha-imou-cgi-local",
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/ivaschru/ha-imou-cgi-local/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

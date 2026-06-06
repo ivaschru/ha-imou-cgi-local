@@ -39,7 +39,7 @@ Each configured camera creates these entities:
 - `CGI motion`
 - `CGI event stream connected`
 - `CGI last event`
-- `CGI event count`
+- `CGI event count` (`total_increasing`, unit `events`)
 - `CGI HDR`
 
 ## Installation with HACS

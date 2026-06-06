@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
@@ -75,6 +75,9 @@ class ImouCgiEventCountSensor(ImouCgiEntity, SensorEntity):
 
     _attr_name = "CGI event count"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_native_unit_of_measurement = "events"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 0
 
     def __init__(self, runtime: ImouCgiRuntime, entry_id: str) -> None:
         super().__init__(runtime, entry_id)

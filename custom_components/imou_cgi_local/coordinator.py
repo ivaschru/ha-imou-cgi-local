@@ -8,6 +8,7 @@ import threading
 import time
 from dataclasses import replace
 from datetime import datetime, timezone
+from functools import partial
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -101,7 +102,7 @@ class ImouCgiRuntime:
     def _thread_publish(self, **changes: Any) -> None:
         """Publish worker-thread changes on Home Assistant's event loop."""
 
-        self.hass.loop.call_soon_threadsafe(self._publish, **changes)
+        self.hass.loop.call_soon_threadsafe(partial(self._publish, **changes))
 
     def _publish(self, **changes: Any) -> None:
         """Create a new immutable snapshot and notify all entities."""

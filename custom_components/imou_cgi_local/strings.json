@@ -11,6 +11,7 @@
           "username": "Username",
           "password": "Password",
           "event_codes": "Event codes",
+          "digital_input_timeout": "Digital input timeout, seconds",
           "motion_timeout": "Motion timeout, seconds",
           "reconnect_delay": "Reconnect delay, seconds"
         }
@@ -30,6 +31,7 @@
         "title": "Local Imou CGI options",
         "data": {
           "event_codes": "Event codes",
+          "digital_input_timeout": "Digital input timeout, seconds",
           "motion_timeout": "Motion timeout, seconds",
           "reconnect_delay": "Reconnect delay, seconds"
         }

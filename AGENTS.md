@@ -12,7 +12,6 @@
 
 - `custom_components/imou_cgi_local/` — Home Assistant integration source.
 - `hacs.json` — HACS metadata.
-- `.github/workflows/validate.yaml` — lightweight validation workflow.
 - `tests/` — parser/unit tests that do not require Home Assistant runtime.
 
 ## Development Rules

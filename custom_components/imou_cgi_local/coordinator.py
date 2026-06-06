@@ -37,6 +37,7 @@ class ImouCgiRuntime:
         *,
         name: str,
         event_codes: list[str],
+        digital_input_timeout: int,
         motion_timeout: int,
         reconnect_delay: int,
     ) -> None:
@@ -44,6 +45,7 @@ class ImouCgiRuntime:
         self.client = client
         self.name = name
         self.event_codes = event_codes
+        self.digital_input_timeout = digital_input_timeout
         self.motion_timeout = motion_timeout
         self.reconnect_delay = reconnect_delay
         self.coordinator: DataUpdateCoordinator[CgiRuntimeData] = DataUpdateCoordinator(
@@ -55,6 +57,8 @@ class ImouCgiRuntime:
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._event_count = 0
+        self._digital_input = False
+        self._last_digital_input_at: datetime | None = None
         self._motion = False
         self._last_video_motion_at: datetime | None = None
 
@@ -140,10 +144,17 @@ class ImouCgiRuntime:
         elif event.code == "VideoMotion" and event.action.lower() == "stop":
             self._motion = False
             self._last_video_motion_at = event.received_at
+        elif event.code == "DigitalInput" and event.action.lower() in {"start", "pulse"}:
+            self._digital_input = True
+            self._last_digital_input_at = event.received_at
+        elif event.code == "DigitalInput" and event.action.lower() == "stop":
+            self._digital_input = False
+            self._last_digital_input_at = event.received_at
 
         self._event_count += 1
 
         self._thread_publish(
+            digital_input=self._digital_input,
             motion=self._motion,
             event_count=self._event_count,
             last_event=event,
@@ -159,6 +170,16 @@ class ImouCgiRuntime:
         if elapsed >= self.motion_timeout:
             self._motion = False
             self._thread_publish(motion=False)
+
+    def _expire_digital_input_if_needed(self) -> None:
+        """Clear the momentary digital input if the camera sends no Stop."""
+
+        if not self._digital_input or self._last_digital_input_at is None:
+            return
+        elapsed = (_utcnow() - self._last_digital_input_at).total_seconds()
+        if elapsed >= self.digital_input_timeout:
+            self._digital_input = False
+            self._thread_publish(digital_input=False)
 
     def _run_event_stream_forever(self) -> None:
         """Keep a persistent Digest-auth CGI event subscription alive."""
@@ -176,6 +197,7 @@ class ImouCgiRuntime:
                 self._set_connected(False, error=str(exc))
 
             self._expire_motion_if_needed()
+            self._expire_digital_input_if_needed()
             self._stop_event.wait(self.reconnect_delay)
 
     def _read_event_stream(self, response: Any) -> None:
@@ -201,9 +223,11 @@ class ImouCgiRuntime:
             line.clear()
             if not text:
                 self._expire_motion_if_needed()
+                self._expire_digital_input_if_needed()
                 continue
 
             event = parse_event_line(text)
             if event is not None:
                 self._handle_event(event)
             self._expire_motion_if_needed()
+            self._expire_digital_input_if_needed()

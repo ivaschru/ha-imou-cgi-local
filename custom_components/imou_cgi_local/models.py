@@ -29,6 +29,7 @@ class CgiRuntimeData:
     """Immutable snapshot consumed by Home Assistant entities."""
 
     connected: bool = False
+    digital_input: bool = False
     motion: bool = False
     event_count: int = 0
     last_event: CgiEvent | None = None

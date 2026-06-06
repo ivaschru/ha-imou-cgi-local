@@ -24,6 +24,7 @@ async def async_setup_entry(
     async_add_entities(
         [
             ImouCgiMotionSensor(runtime, entry.entry_id),
+            ImouCgiDigitalInputSensor(runtime, entry.entry_id),
             ImouCgiConnectedSensor(runtime, entry.entry_id),
         ]
     )
@@ -77,3 +78,19 @@ class ImouCgiConnectedSensor(ImouCgiEntity, BinarySensorEntity):
             else None,
             "last_error": data.last_error,
         }
+
+
+class ImouCgiDigitalInputSensor(ImouCgiEntity, BinarySensorEntity):
+    """Momentary binary sensor driven by CGI ``DigitalInput`` events."""
+
+    _attr_name = "CGI digital input"
+
+    def __init__(self, runtime: ImouCgiRuntime, entry_id: str) -> None:
+        super().__init__(runtime, entry_id)
+        self._attr_unique_id = f"{entry_id}_cgi_digital_input"
+
+    @property
+    def is_on(self) -> bool:
+        """Return true while the latest DigitalInput event is active."""
+
+        return bool(self.runtime.data.digital_input)

@@ -13,8 +13,10 @@ from homeassistant.helpers import selector
 from .api import ImouCgiClient, ImouCgiCredentials, ImouCgiError
 from .const import (
     CONF_EVENT_CODES,
+    CONF_DIGITAL_INPUT_TIMEOUT,
     CONF_MOTION_TIMEOUT,
     CONF_RECONNECT_DELAY,
+    DEFAULT_DIGITAL_INPUT_TIMEOUT,
     DEFAULT_EVENT_CODES,
     DEFAULT_MOTION_TIMEOUT,
     DEFAULT_NAME,
@@ -78,6 +80,12 @@ class ImouCgiLocalConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_EVENT_CODES: _event_codes_from_text(
                         user_input.pop(CONF_EVENT_CODES, DEFAULT_EVENT_CODES)
                     ),
+                    CONF_DIGITAL_INPUT_TIMEOUT: int(
+                        user_input.pop(
+                            CONF_DIGITAL_INPUT_TIMEOUT,
+                            DEFAULT_DIGITAL_INPUT_TIMEOUT,
+                        )
+                    ),
                     CONF_MOTION_TIMEOUT: int(
                         user_input.pop(CONF_MOTION_TIMEOUT, DEFAULT_MOTION_TIMEOUT)
                     ),
@@ -131,6 +139,13 @@ class ImouCgiLocalConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     default=values.get(CONF_MOTION_TIMEOUT, DEFAULT_MOTION_TIMEOUT),
                 ): int,
                 vol.Required(
+                    CONF_DIGITAL_INPUT_TIMEOUT,
+                    default=values.get(
+                        CONF_DIGITAL_INPUT_TIMEOUT,
+                        DEFAULT_DIGITAL_INPUT_TIMEOUT,
+                    ),
+                ): int,
+                vol.Required(
                     CONF_RECONNECT_DELAY,
                     default=values.get(CONF_RECONNECT_DELAY, DEFAULT_RECONNECT_DELAY),
                 ): int,
@@ -152,6 +167,7 @@ class ImouCgiLocalOptionsFlow(config_entries.OptionsFlow):
                 title="",
                 data={
                     CONF_EVENT_CODES: _event_codes_from_text(user_input[CONF_EVENT_CODES]),
+                    CONF_DIGITAL_INPUT_TIMEOUT: int(user_input[CONF_DIGITAL_INPUT_TIMEOUT]),
                     CONF_MOTION_TIMEOUT: int(user_input[CONF_MOTION_TIMEOUT]),
                     CONF_RECONNECT_DELAY: int(user_input[CONF_RECONNECT_DELAY]),
                 },
@@ -171,6 +187,15 @@ class ImouCgiLocalOptionsFlow(config_entries.OptionsFlow):
                     vol.Required(
                         CONF_MOTION_TIMEOUT,
                         default=int(options.get(CONF_MOTION_TIMEOUT, DEFAULT_MOTION_TIMEOUT)),
+                    ): int,
+                    vol.Required(
+                        CONF_DIGITAL_INPUT_TIMEOUT,
+                        default=int(
+                            options.get(
+                                CONF_DIGITAL_INPUT_TIMEOUT,
+                                DEFAULT_DIGITAL_INPUT_TIMEOUT,
+                            )
+                        ),
                     ): int,
                     vol.Required(
                         CONF_RECONNECT_DELAY,

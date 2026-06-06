@@ -9,8 +9,10 @@ from homeassistant.core import HomeAssistant
 from .api import ImouCgiClient, ImouCgiCredentials
 from .const import (
     CONF_EVENT_CODES,
+    CONF_DIGITAL_INPUT_TIMEOUT,
     CONF_MOTION_TIMEOUT,
     CONF_RECONNECT_DELAY,
+    DEFAULT_DIGITAL_INPUT_TIMEOUT,
     DEFAULT_EVENT_CODES,
     DEFAULT_MOTION_TIMEOUT,
     DEFAULT_RECONNECT_DELAY,
@@ -37,6 +39,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ImouCgiClient(credentials),
         name=data.get(CONF_NAME, entry.title),
         event_codes=list(options.get(CONF_EVENT_CODES, DEFAULT_EVENT_CODES)),
+        digital_input_timeout=int(
+            options.get(CONF_DIGITAL_INPUT_TIMEOUT, DEFAULT_DIGITAL_INPUT_TIMEOUT)
+        ),
         motion_timeout=int(options.get(CONF_MOTION_TIMEOUT, DEFAULT_MOTION_TIMEOUT)),
         reconnect_delay=int(options.get(CONF_RECONNECT_DELAY, DEFAULT_RECONNECT_DELAY)),
     )

@@ -16,11 +16,17 @@ DEFAULT_NAME = "Imou CGI Local"
 DEFAULT_PORT = 80
 
 # DB61i exposes Dahua-style event names.  ``VideoMotion`` is the useful binary
-# motion event. ``DigitalInput`` is the likely local CGI equivalent of the DB61i
-# ONVIF doorbell button topic ``Device/Trigger/DigitalInput_00000``.
-# ``VideoMotionInfo`` is included because the camera sends state heartbeats for
-# it and those heartbeats prove that the CGI event stream itself is still alive.
-DEFAULT_EVENT_CODES = ["VideoMotion", "VideoMotionInfo", "DigitalInput"]
+# motion event. ``VideoMotionInfo`` is included because the camera sends state
+# heartbeats for it and those heartbeats prove that the CGI event stream itself
+# is still alive.
+#
+# A physical DB61i button press was observed as ``AlarmLocal`` Start/Stop on the
+# CGI stream, while the older assumed ``DigitalInput`` code did not fire on that
+# device.  Keep ``DigitalInput`` subscribed for Dahua/Imou models where it really
+# is the button input, but treat ``AlarmLocal`` as the primary DB61i doorbell
+# event.
+DEFAULT_EVENT_CODES = ["VideoMotion", "VideoMotionInfo", "DigitalInput", "AlarmLocal"]
+DOORBELL_EVENT_CODES = {"DigitalInput", "AlarmLocal"}
 
 # The camera sometimes sends ``Start`` without a matching ``Stop`` when the
 # connection is interrupted.  Keep motion active long enough for a Telegram

@@ -29,6 +29,9 @@ class CgiRuntimeData:
     """Immutable snapshot consumed by Home Assistant entities."""
 
     connected: bool = False
+    # Kept as ``digital_input`` for entity-registry compatibility with releases
+    # before 0.2.2.  The value now means "doorbell/button event is active" and
+    # can be driven by DB61i ``AlarmLocal`` or by legacy ``DigitalInput`` codes.
     digital_input: bool = False
     motion: bool = False
     event_count: int = 0

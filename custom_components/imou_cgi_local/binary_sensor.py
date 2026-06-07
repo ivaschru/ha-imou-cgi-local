@@ -24,7 +24,7 @@ async def async_setup_entry(
     async_add_entities(
         [
             ImouCgiMotionSensor(runtime, entry.entry_id),
-            ImouCgiDigitalInputSensor(runtime, entry.entry_id),
+            ImouCgiDoorbellSensor(runtime, entry.entry_id),
             ImouCgiConnectedSensor(runtime, entry.entry_id),
         ]
     )
@@ -80,17 +80,19 @@ class ImouCgiConnectedSensor(ImouCgiEntity, BinarySensorEntity):
         }
 
 
-class ImouCgiDigitalInputSensor(ImouCgiEntity, BinarySensorEntity):
-    """Momentary binary sensor driven by CGI ``DigitalInput`` events."""
+class ImouCgiDoorbellSensor(ImouCgiEntity, BinarySensorEntity):
+    """Momentary doorbell sensor driven by CGI button-related events."""
 
-    _attr_name = "CGI digital input"
+    _attr_name = "CGI doorbell"
 
     def __init__(self, runtime: ImouCgiRuntime, entry_id: str) -> None:
         super().__init__(runtime, entry_id)
+        # Preserve the original unique id so existing installations keep the
+        # same entity registry row and helper references after the semantic fix.
         self._attr_unique_id = f"{entry_id}_cgi_digital_input"
 
     @property
     def is_on(self) -> bool:
-        """Return true while the latest DigitalInput event is active."""
+        """Return true while a CGI doorbell event is active."""
 
         return bool(self.runtime.data.digital_input)

@@ -54,6 +54,14 @@ class EventParsingTest(unittest.TestCase):
         self.assertEqual(event.action, "Start")
         self.assertEqual(event.index, "0")
 
+    def test_alarm_local_start(self) -> None:
+        event = parse_event_line("Code=AlarmLocal;action=Start;index=0")
+
+        self.assertIsNotNone(event)
+        self.assertEqual(event.code, "AlarmLocal")
+        self.assertEqual(event.action, "Start")
+        self.assertEqual(event.index, "0")
+
     def test_ignores_multipart_headers(self) -> None:
         self.assertIsNone(parse_event_line("--myboundary"))
         self.assertIsNone(parse_event_line("Content-Type: text/plain"))

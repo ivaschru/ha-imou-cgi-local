@@ -15,6 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api import ImouCgiClient
+from .const import DOORBELL_EVENT_CODES
 from .models import CgiEvent, CgiRuntimeData
 from .parsing import parse_event_line
 
@@ -58,6 +59,7 @@ class ImouCgiRuntime:
         self._thread: threading.Thread | None = None
         self._event_count = 0
         self._digital_input = False
+        self._active_doorbell_codes: set[str] = set()
         self._last_digital_input_at: datetime | None = None
         self._motion = False
         self._last_video_motion_at: datetime | None = None
@@ -135,20 +137,30 @@ class ImouCgiRuntime:
     def _handle_event(self, event: CgiEvent) -> None:
         """Apply one parsed camera event to the coordinator data."""
 
+        action = event.action.lower()
+
         # DB61i emits ``VideoMotion`` Start/Stop events for motion detection.
         # ``VideoMotionInfo`` State events are useful as stream heartbeats but
         # should not toggle the binary motion sensor by themselves.
-        if event.code == "VideoMotion" and event.action.lower() == "start":
+        if event.code == "VideoMotion" and action == "start":
             self._motion = True
             self._last_video_motion_at = event.received_at
-        elif event.code == "VideoMotion" and event.action.lower() == "stop":
+        elif event.code == "VideoMotion" and action == "stop":
             self._motion = False
             self._last_video_motion_at = event.received_at
-        elif event.code == "DigitalInput" and event.action.lower() in {"start", "pulse"}:
+
+        # For DB61i doorbells, a physical button press appears on CGI as
+        # ``AlarmLocal`` Start/Stop.  ``DigitalInput`` is retained here because
+        # some Dahua/Imou devices expose the same physical input under that code.
+        # Track active codes as a set so one Stop event cannot clear another
+        # still-active button-related code in cameras that emit both.
+        elif event.code in DOORBELL_EVENT_CODES and action in {"start", "pulse"}:
             self._digital_input = True
+            self._active_doorbell_codes.add(event.code)
             self._last_digital_input_at = event.received_at
-        elif event.code == "DigitalInput" and event.action.lower() == "stop":
-            self._digital_input = False
+        elif event.code in DOORBELL_EVENT_CODES and action == "stop":
+            self._active_doorbell_codes.discard(event.code)
+            self._digital_input = bool(self._active_doorbell_codes)
             self._last_digital_input_at = event.received_at
 
         self._event_count += 1
@@ -179,6 +191,7 @@ class ImouCgiRuntime:
         elapsed = (_utcnow() - self._last_digital_input_at).total_seconds()
         if elapsed >= self.digital_input_timeout:
             self._digital_input = False
+            self._active_doorbell_codes.clear()
             self._thread_publish(digital_input=False)
 
     def _run_event_stream_forever(self) -> None:

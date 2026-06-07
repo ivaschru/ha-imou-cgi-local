@@ -11,7 +11,7 @@ camera over the local HTTP web service and does not use the Imou cloud.
 Some Imou/Dahua devices expose motion events through the local CGI endpoint:
 
 ```text
-/cgi-bin/eventManager.cgi?action=attach&codes=[VideoMotion,VideoMotionInfo,DigitalInput]
+/cgi-bin/eventManager.cgi?action=attach&codes=[VideoMotion,VideoMotionInfo,DigitalInput,AlarmLocal]
 ```
 
 On at least one `IMOU DB61i` doorbell, this CGI event stream kept reporting
@@ -25,8 +25,9 @@ Assistant an independent local motion source for that case.
 - Authenticate to the camera web service with HTTP Digest authentication.
 - Subscribe to the long-lived local CGI event stream.
 - Expose a motion binary sensor from `VideoMotion` `Start` / `Stop` events.
-- Expose a momentary digital input binary sensor from `DigitalInput` events,
-  which is the likely local CGI equivalent of a DB61i doorbell button press.
+- Expose a momentary doorbell binary sensor from DB61i `AlarmLocal` events.
+  `DigitalInput` is also supported for Dahua/Imou models that use it for the
+  same physical input.
 - Expose an event-stream connectivity binary sensor.
 - Expose diagnostic sensors for the last parsed event and event count.
 - Expose a Wide Dynamic Range / HDR switch backed by
@@ -39,7 +40,7 @@ Assistant an independent local motion source for that case.
 Each configured camera creates these entities:
 
 - `CGI motion`
-- `CGI digital input`
+- `CGI doorbell`
 - `CGI event stream connected`
 - `CGI last event`
 - `CGI event count` (`total_increasing`, unit `events`)
@@ -70,11 +71,12 @@ The setup form accepts:
 - `HTTP port`: usually `80`.
 - `Username` / `Password`: local camera web/ONVIF credentials.
 - `Event codes`: comma-separated Dahua/Imou event codes. Defaults to
-  `VideoMotion,VideoMotionInfo,DigitalInput`.
+  `VideoMotion,VideoMotionInfo,DigitalInput,AlarmLocal`.
 - `Motion timeout`: fallback time in seconds before clearing motion if a
   `Start` event is not followed by `Stop`.
-- `Digital input timeout`: fallback time in seconds before clearing a momentary
-  digital input if a `Start` / `Pulse` event is not followed by `Stop`.
+- `Digital input timeout`: fallback time in seconds before clearing the
+  momentary doorbell/input sensor if a `Start` / `Pulse` event is not followed
+  by `Stop`.
 - `Reconnect delay`: delay in seconds before reopening the event stream after a
   read timeout or disconnect.
 
@@ -121,5 +123,11 @@ logger:
 
 ```bash
 curl --digest -u 'USER:PASS' --globoff -N \
-  'http://CAMERA_IP/cgi-bin/eventManager.cgi?action=attach&codes=[VideoMotion,VideoMotionInfo,DigitalInput]'
+  'http://CAMERA_IP/cgi-bin/eventManager.cgi?action=attach&codes=[VideoMotion,VideoMotionInfo,DigitalInput,AlarmLocal]'
 ```
+
+On the tested `IMOU DB61i`, a physical button press appears as
+`Code=AlarmLocal;action=Start;index=0` followed by
+`Code=AlarmLocal;action=Stop;index=0`. Existing installations that created the
+old `CGI digital input` entity keep the same entity registry row, but the
+entity now represents the doorbell/input event.

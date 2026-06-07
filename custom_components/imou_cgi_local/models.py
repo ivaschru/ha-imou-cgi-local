@@ -39,5 +39,9 @@ class CgiRuntimeData:
     last_error: str | None = None
     last_connected_at: datetime | None = None
     last_disconnected_at: datetime | None = None
+    last_reconnect_at: datetime | None = None
+    last_reconnect_reason: str | None = None
+    reconnect_count: int = 0
+    consecutive_failures: int = 0
     wdr_enabled: bool | None = None
     extra: dict[str, Any] = field(default_factory=dict)

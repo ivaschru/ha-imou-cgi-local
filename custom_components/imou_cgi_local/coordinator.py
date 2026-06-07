@@ -15,7 +15,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api import ImouCgiClient
-from .const import DOORBELL_EVENT_CODES
+from .const import (
+    DOORBELL_EVENT_CODES,
+    EVENT_STREAM_FAILURE_THRESHOLD,
+    EVENT_STREAM_MIN_HEALTHY_SECONDS,
+)
 from .models import CgiEvent, CgiRuntimeData
 from .parsing import parse_event_line
 
@@ -26,6 +30,10 @@ def _utcnow() -> datetime:
     """Return a timezone-aware UTC timestamp for entity attributes."""
 
     return datetime.now(timezone.utc)
+
+
+class RoutineEventStreamReconnect(RuntimeError):
+    """Raised when a healthy long-poll stream should be reopened."""
 
 
 class ImouCgiRuntime:
@@ -63,6 +71,8 @@ class ImouCgiRuntime:
         self._last_digital_input_at: datetime | None = None
         self._motion = False
         self._last_video_motion_at: datetime | None = None
+        self._consecutive_stream_failures = 0
+        self._reconnect_count = 0
 
     @property
     def data(self) -> CgiRuntimeData:
@@ -117,22 +127,47 @@ class ImouCgiRuntime:
         next_data = replace(current, **changes)
         self.coordinator.async_set_updated_data(next_data)
 
-    def _set_connected(self, connected: bool, *, error: str | None = None) -> None:
-        """Update connection diagnostics from the worker thread."""
+    def _mark_stream_connected(self) -> None:
+        """Mark the event stream healthy after a successful HTTP attach."""
 
         now = _utcnow()
-        if connected:
-            self._thread_publish(
-                connected=True,
-                last_error=None,
-                last_connected_at=now,
-            )
-        else:
-            self._thread_publish(
-                connected=False,
-                last_error=error,
-                last_disconnected_at=now,
-            )
+        self._consecutive_stream_failures = 0
+        self._thread_publish(
+            connected=True,
+            last_error=None,
+            last_connected_at=now,
+            consecutive_failures=0,
+        )
+
+    def _mark_routine_reconnect(self, reason: str) -> None:
+        """Record a normal long-poll reconnect without marking health down."""
+
+        now = _utcnow()
+        self._reconnect_count += 1
+        self._consecutive_stream_failures = 0
+        self._thread_publish(
+            connected=True,
+            last_error=None,
+            last_reconnect_at=now,
+            last_reconnect_reason=reason,
+            reconnect_count=self._reconnect_count,
+            consecutive_failures=0,
+        )
+
+    def _mark_stream_failure(self, error: str) -> None:
+        """Record a failed attach/read and mark health down after repeats."""
+
+        now = _utcnow()
+        self._consecutive_stream_failures += 1
+        connected = self._consecutive_stream_failures < EVENT_STREAM_FAILURE_THRESHOLD
+        changes: dict[str, Any] = {
+            "connected": connected,
+            "last_error": error,
+            "consecutive_failures": self._consecutive_stream_failures,
+        }
+        if not connected:
+            changes["last_disconnected_at"] = now
+        self._thread_publish(**changes)
 
     def _handle_event(self, event: CgiEvent) -> None:
         """Apply one parsed camera event to the coordinator data."""
@@ -203,11 +238,14 @@ class ImouCgiRuntime:
                     self.event_codes,
                     timeout=max(30, self.motion_timeout),
                 ) as response:
-                    self._set_connected(True)
-                    self._read_event_stream(response)
+                    self._mark_stream_connected()
+                    try:
+                        self._read_event_stream(response)
+                    except RoutineEventStreamReconnect as exc:
+                        self._mark_routine_reconnect(str(exc))
             except Exception as exc:  # noqa: BLE001 - diagnostics must survive bad cameras.
                 _LOGGER.debug("Imou CGI event stream failed", exc_info=True)
-                self._set_connected(False, error=str(exc))
+                self._mark_stream_failure(str(exc))
 
             self._expire_motion_if_needed()
             self._expire_digital_input_if_needed()
@@ -216,17 +254,24 @@ class ImouCgiRuntime:
     def _read_event_stream(self, response: Any) -> None:
         """Read multipart text stream until stopped or a read failure occurs."""
 
+        started_at = time.monotonic()
         line = bytearray()
         while not self._stop_event.is_set():
             try:
                 chunk = response.read(1)
             except (OSError, TimeoutError, socket.timeout) as exc:
                 # ``urllib`` turns idle long-poll reads into timeout objects.
-                # Reconnecting is cheap and also acts as a stream watchdog.
-                raise RuntimeError(f"event stream read timeout: {exc}") from exc
+                # Reconnecting is cheap and also acts as a stream watchdog.  Do
+                # not report this as a connectivity outage unless the next
+                # attach attempts repeatedly fail.
+                raise RoutineEventStreamReconnect(
+                    f"event stream read timeout: {exc}"
+                ) from exc
 
             if not chunk:
-                raise RuntimeError("event stream closed by camera")
+                if time.monotonic() - started_at < EVENT_STREAM_MIN_HEALTHY_SECONDS:
+                    raise RuntimeError("event stream closed before healthy window")
+                raise RoutineEventStreamReconnect("event stream closed by camera")
 
             line.extend(chunk)
             if chunk not in {b"\n", b"\r"} and len(line) < 2048:

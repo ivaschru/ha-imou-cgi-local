@@ -60,13 +60,13 @@ class ImouCgiConnectedSensor(ImouCgiEntity, BinarySensorEntity):
 
     @property
     def is_on(self) -> bool:
-        """Return true while the event stream HTTP connection is open."""
+        """Return true while the CGI event subscription is healthy."""
 
         return bool(self.runtime.data.connected)
 
     @property
-    def extra_state_attributes(self) -> dict[str, str | None]:
-        """Expose connection timestamps and last error for diagnostics."""
+    def extra_state_attributes(self) -> dict[str, str | int | None]:
+        """Expose stream health and reconnect diagnostics."""
 
         data = self.runtime.data
         return {
@@ -76,6 +76,12 @@ class ImouCgiConnectedSensor(ImouCgiEntity, BinarySensorEntity):
             "last_disconnected_at": data.last_disconnected_at.isoformat()
             if data.last_disconnected_at
             else None,
+            "last_reconnect_at": data.last_reconnect_at.isoformat()
+            if data.last_reconnect_at
+            else None,
+            "last_reconnect_reason": data.last_reconnect_reason,
+            "reconnect_count": data.reconnect_count,
+            "consecutive_failures": data.consecutive_failures,
             "last_error": data.last_error,
         }
 

@@ -34,6 +34,9 @@ Assistant an independent local motion source for that case.
   `VideoInOptions[0].WideDynamicRange`.
 - Reconnect automatically if the event stream times out or the camera closes
   the connection.
+- Treat normal long-poll read timeouts as healthy reconnects, so the
+  connectivity sensor reports subscription health instead of every internal
+  socket cycle.
 
 ## Entities
 
@@ -45,6 +48,13 @@ Each configured camera creates these entities:
 - `CGI last event`
 - `CGI event count` (`total_increasing`, unit `events`)
 - `CGI HDR`
+
+`CGI event stream connected` is a health sensor, not a literal "socket is open
+right now" flag. Dahua/Imou CGI event streams can sit idle until the HTTP client
+read times out; the integration then reconnects. Those normal reconnects keep
+the sensor `on` and are exposed through attributes such as `last_reconnect_at`,
+`last_reconnect_reason`, `reconnect_count` and `consecutive_failures`. The
+sensor turns `off` only after repeated failed attach/read attempts.
 
 ## Installation with HACS
 

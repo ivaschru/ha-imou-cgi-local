@@ -35,7 +35,13 @@ class CgiRuntimeData:
     digital_input: bool = False
     motion: bool = False
     event_count: int = 0
+    # Counts only real doorbell/button press starts.  A binary sensor can stay
+    # ``on`` between AlarmLocal Start/Stop events, so this counter gives Home
+    # Assistant automations an event-like source that still fires for repeated
+    # presses during one active window.
+    doorbell_event_count: int = 0
     last_event: CgiEvent | None = None
+    last_doorbell_event: CgiEvent | None = None
     last_error: str | None = None
     last_connected_at: datetime | None = None
     last_disconnected_at: datetime | None = None

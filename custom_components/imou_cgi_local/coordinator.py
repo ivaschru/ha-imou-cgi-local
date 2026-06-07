@@ -66,6 +66,7 @@ class ImouCgiRuntime:
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._event_count = 0
+        self._doorbell_event_count = 0
         self._digital_input = False
         self._active_doorbell_codes: set[str] = set()
         self._last_digital_input_at: datetime | None = None
@@ -173,6 +174,7 @@ class ImouCgiRuntime:
         """Apply one parsed camera event to the coordinator data."""
 
         action = event.action.lower()
+        doorbell_event: CgiEvent | None = None
 
         # DB61i emits ``VideoMotion`` Start/Stop events for motion detection.
         # ``VideoMotionInfo`` State events are useful as stream heartbeats but
@@ -193,6 +195,8 @@ class ImouCgiRuntime:
             self._digital_input = True
             self._active_doorbell_codes.add(event.code)
             self._last_digital_input_at = event.received_at
+            self._doorbell_event_count += 1
+            doorbell_event = event
         elif event.code in DOORBELL_EVENT_CODES and action == "stop":
             self._active_doorbell_codes.discard(event.code)
             self._digital_input = bool(self._active_doorbell_codes)
@@ -200,13 +204,17 @@ class ImouCgiRuntime:
 
         self._event_count += 1
 
-        self._thread_publish(
-            digital_input=self._digital_input,
-            motion=self._motion,
-            event_count=self._event_count,
-            last_event=event,
-            last_error=None,
-        )
+        changes: dict[str, Any] = {
+            "digital_input": self._digital_input,
+            "motion": self._motion,
+            "event_count": self._event_count,
+            "last_event": event,
+            "last_error": None,
+        }
+        if doorbell_event is not None:
+            changes["doorbell_event_count"] = self._doorbell_event_count
+            changes["last_doorbell_event"] = doorbell_event
+        self._thread_publish(**changes)
 
     def _expire_motion_if_needed(self) -> None:
         """Clear motion if a Start event was not followed by Stop."""

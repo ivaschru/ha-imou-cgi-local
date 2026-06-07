@@ -25,6 +25,7 @@ async def async_setup_entry(
         [
             ImouCgiLastEventSensor(runtime, entry.entry_id),
             ImouCgiEventCountSensor(runtime, entry.entry_id),
+            ImouCgiDoorbellEventCountSensor(runtime, entry.entry_id),
         ]
     )
 
@@ -88,3 +89,39 @@ class ImouCgiEventCountSensor(ImouCgiEntity, SensorEntity):
         """Return the number of parsed ``Code=`` event lines."""
 
         return self.runtime.data.event_count
+
+
+class ImouCgiDoorbellEventCountSensor(ImouCgiEntity, SensorEntity):
+    """Count doorbell/button press events, not the active binary state."""
+
+    _attr_name = "CGI doorbell event count"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_native_unit_of_measurement = "events"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, runtime: ImouCgiRuntime, entry_id: str) -> None:
+        super().__init__(runtime, entry_id)
+        self._attr_unique_id = f"{entry_id}_cgi_doorbell_event_count"
+
+    @property
+    def native_value(self) -> int:
+        """Return the number of parsed doorbell ``Start`` / ``Pulse`` events."""
+
+        return self.runtime.data.doorbell_event_count
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | int | None]:
+        """Expose the latest counted doorbell event for automation debugging."""
+
+        event = self.runtime.data.last_doorbell_event
+        if event is None:
+            return {"last_error": self.runtime.data.last_error}
+        return {
+            "code": event.code,
+            "action": event.action,
+            "index": event.index,
+            "raw": event.raw,
+            "received_at": event.received_at.isoformat(),
+            "last_error": self.runtime.data.last_error,
+        }

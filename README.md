@@ -29,7 +29,8 @@ Assistant an independent local motion source for that case.
   `DigitalInput` is also supported for Dahua/Imou models that use it for the
   same physical input.
 - Expose an event-stream connectivity binary sensor.
-- Expose diagnostic sensors for the last parsed event and event count.
+- Expose diagnostic sensors for the last parsed event, all-event count and
+  doorbell-event count.
 - Expose a Wide Dynamic Range / HDR switch backed by
   `VideoInOptions[0].WideDynamicRange`.
 - Reconnect automatically if the event stream times out or the camera closes
@@ -47,6 +48,7 @@ Each configured camera creates these entities:
 - `CGI event stream connected`
 - `CGI last event`
 - `CGI event count` (`total_increasing`, unit `events`)
+- `CGI doorbell event count` (`total_increasing`, unit `events`)
 - `CGI HDR`
 
 `CGI event stream connected` is a health sensor, not a literal "socket is open
@@ -128,7 +130,7 @@ logger:
 ```
 
 - Check `CGI event stream connected`.
-- Check `CGI last event` and `CGI event count`.
+- Check `CGI last event`, `CGI event count` and `CGI doorbell event count`.
 - Test the camera directly:
 
 ```bash
@@ -141,3 +143,9 @@ On the tested `IMOU DB61i`, a physical button press appears as
 `Code=AlarmLocal;action=Stop;index=0`. Existing installations that created the
 old `CGI digital input` entity keep the same entity registry row, but the
 entity now represents the doorbell/input event.
+
+For automations that must run for every press, prefer `CGI doorbell event
+count` over the binary `CGI doorbell` state.  The binary entity intentionally
+stays `on` between `Start` and `Stop`, while the counter increments on every
+new `Start` / `Pulse`, including repeated presses during the same active
+window.
